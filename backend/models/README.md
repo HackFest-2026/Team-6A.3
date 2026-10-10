@@ -1,0 +1,5 @@
+The classifier ensemble is configured by `AS4_FINAL_ensemble.json`. It names the ResNet50 and DenseNet121 checkpoints, their probability weights, and their source classes. The supplied classes map to the API classes as follows: `Normal` to `Healthy`, `No Lung Opacity / Not Normal` to `Not Healthy`, and `Lung Opacity` to `Pneumonia`.
+
+The configured classifier files are `AS4_FINAL_ensemble_resnet50.pth` and `AS4_FINAL_ensemble_densenet121.pth`. They must be raw state dictionaries or contain one under `state_dict`, `model_state_dict`, or `model`, with three-logit output layers.
+
+An Ultralytics-compatible YOLO detection checkpoint for region localization must also be present here. The service recognizes `yolo.pth` or `controlled_v1_best.pt` (the supplied checkpoint). It draws unlabeled red boxes and reports the maximum detection confidence, or null when no boxes are found. The service intentionally fails startup if the manifest or any required checkpoint is missing or incompatible; no sample predictions are generated.

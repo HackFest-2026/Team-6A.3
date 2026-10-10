@@ -1,0 +1,51 @@
+{
+  "package_name": "AS4_FINAL_CLASSIFIER_INTEGRATION",
+  "selected_model": "Ensemble_tuned(ResNet50_overnight+DenseNet121)",
+  "class_names": [
+    "Normal",
+    "No Lung Opacity / Not Normal",
+    "Lung Opacity"
+  ],
+  "model_files": {
+    "resnet": "models/AS4_FINAL_ensemble_resnet50.pth",
+    "densenet": "models/AS4_FINAL_ensemble_densenet121.pth"
+  },
+  "probability_weights": {
+    "resnet50": 0.65,
+    "densenet121": 0.35
+  },
+  "input": {
+    "format": "RGB image",
+    "resize": [
+      224,
+      224
+    ],
+    "normalization_mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "normalization_std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "validation_metrics": {
+    "accuracy": 0.7252623688155923,
+    "macro_precision": 0.7136708645174495,
+    "macro_recall": 0.7311810656753833,
+    "macro_f1": 0.7183819042760033,
+    "macro_roc_auc_ovr": 0.8833712400850189,
+    "samples": 2668
+  },
+  "held_out_test_metrics": {
+    "accuracy": 0.7055076807793181,
+    "macro_precision": 0.692717023368702,
+    "macro_recall": 0.7131209116278816,
+    "macro_f1": 0.6980930744560959,
+    "macro_roc_auc_ovr": 0.8755494274161931,
+    "samples": 2669
+  },
+  "warning": "Research prototype only; not a medical device and not for diagnosis or treatment decisions."
+}

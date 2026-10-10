@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.py[cod]
+models/*.pth
+!models/README.md
