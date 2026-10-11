@@ -5,8 +5,8 @@ import pytest
 from app.bounding import SuspiciousRegionDetector
 
 
-def test_detector_loads_available_controlled_checkpoint(tmp_path: Path, monkeypatch) -> None:
-    checkpoint = tmp_path / "controlled_v1_best.pt"
+def test_detector_loads_available_yolo_checkpoint(tmp_path: Path, monkeypatch) -> None:
+    checkpoint = tmp_path / "yolo11s_lr_0p001_best.pt"
     checkpoint.touch()
     loaded_paths: list[str] = []
 
@@ -22,5 +22,5 @@ def test_detector_loads_available_controlled_checkpoint(tmp_path: Path, monkeypa
 
 
 def test_detector_fails_when_checkpoint_is_missing(tmp_path: Path) -> None:
-    with pytest.raises(FileNotFoundError, match="controlled_v1_best.pt"):
+    with pytest.raises(FileNotFoundError, match="yolo11s_lr_0p001_best.pt"):
         SuspiciousRegionDetector(tmp_path, "cpu")

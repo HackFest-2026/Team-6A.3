@@ -9,11 +9,11 @@ A full-stack chest X-ray analysis workspace. DenseNet121 provides the three-clas
 - Node.js 20 or newer and npm
 - Python 3.10 or newer
 - Classifier manifest and checkpoint: `AS4_FINAL_ensemble.json` and `AS4_FINAL_ensemble_densenet121.pth`
-- YOLO localization checkpoint: `controlled_v1_best.pt` or `yolo.pth`
+- YOLO localization checkpoint: `yolo11s_lr_0p001_best.pt`
 
 ## Model checkpoints
 
-Put the classifier manifest and DenseNet121 checkpoint, plus `controlled_v1_best.pt` or `yolo.pth`, in `backend/models/`. The API reads the classifier filename and class order from `AS4_FINAL_ensemble.json`; its source classes are mapped to `Healthy`, `Not Healthy`, and `Pneumonia` in that order. See `backend/models/README.md` for checkpoint formats. The API loads DenseNet121 and the localizer at startup and exits with an explicit error if required files are missing or incompatible. It does not produce placeholder predictions.
+Put the classifier manifest and DenseNet121 checkpoint, plus `yolo11s_lr_0p001_best.pt`, in `backend/models/`. The API reads the classifier filename and class order from `AS4_FINAL_ensemble.json`; its source classes are mapped to `Healthy`, `Not Healthy`, and `Pneumonia` in that order. See `backend/models/README.md` for checkpoint formats. The API loads DenseNet121 and the localizer at startup and exits with an explicit error if required files are missing or incompatible. It does not produce placeholder predictions.
 
 The disease classes are ordered `Healthy`, `Not Healthy`, `Pneumonia`. The DenseNet121 checkpoint must have a three-logit output head. The YOLO checkpoint must be compatible with Ultralytics YOLO.
 

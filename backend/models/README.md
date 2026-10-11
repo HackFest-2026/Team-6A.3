@@ -2,4 +2,4 @@ Classification is performed only by DenseNet121, configured by `AS4_FINAL_ensemb
 
 The configured classifier file is `AS4_FINAL_ensemble_densenet121.pth`. It must be a raw state dictionary or contain one under `state_dict`, `model_state_dict`, or `model`, with a three-logit output layer. ResNet50 is not loaded or used for prediction.
 
-An Ultralytics-compatible YOLO detection checkpoint for region localization must also be present here. The service recognizes `yolo.pth` or `controlled_v1_best.pt` (the supplied checkpoint). It draws unlabeled red boxes and reports the maximum detection confidence, or null when no boxes are found. The service intentionally fails startup if the manifest or any required checkpoint is missing or incompatible; no sample predictions are generated.
+The Ultralytics-compatible `yolo11s_lr_0p001_best.pt` checkpoint must also be present here for region localization. The service draws unlabeled red boxes and reports the maximum detection confidence, or null when no boxes are found. The service intentionally fails startup if the manifest or any required checkpoint is missing or incompatible; no sample predictions are generated.

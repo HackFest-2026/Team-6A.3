@@ -12,17 +12,10 @@ logger = logging.getLogger(__name__)
 
 class SuspiciousRegionDetector:
     def __init__(self, model_dir: Path, device: str) -> None:
-        checkpoint_path = next(
-            (
-                path
-                for path in (model_dir / "yolo.pth", model_dir / "controlled_v1_best.pt")
-                if path.is_file()
-            ),
-            None,
-        )
-        if checkpoint_path is None:
+        checkpoint_path = model_dir / "yolo11s_lr_0p001_best.pt"
+        if not checkpoint_path.is_file():
             raise FileNotFoundError(
-                f"Required YOLO checkpoint not found in {model_dir}; expected yolo.pth or controlled_v1_best.pt."
+                f"Required YOLO checkpoint not found: {checkpoint_path}"
             )
         self.model = YOLO(str(checkpoint_path))
         self.device = device
@@ -40,6 +33,6 @@ class SuspiciousRegionDetector:
         if result.boxes is not None:
             for box in result.boxes:
                 x1, y1, x2, y2 = (int(value) for value in box.xyxy[0].tolist())
-                cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 32, 32), 3)
+                cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 0, 255), 3)
                 confidences.append(float(box.conf[0].item()))
         return annotated, max(confidences, default=None)

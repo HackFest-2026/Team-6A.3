@@ -6,7 +6,7 @@ import sys
 from ultralytics import YOLO
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_WEIGHTS = HERE / "models" / "controlled_v1_best.pt"
+DEFAULT_WEIGHTS = HERE.parent / "models" / "yolo11s_lr_0p001_best.pt"
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
 
 
@@ -23,7 +23,7 @@ def collect_images(input_path: Path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="AS4 Controlled v1 YOLO11s lung-opacity detector (research prototype)"
+        description="YOLO11s region localizer (research prototype)"
     )
     parser.add_argument("input", help="Image file or folder of images")
     parser.add_argument("--weights", default=str(DEFAULT_WEIGHTS),
@@ -49,7 +49,7 @@ def main():
     if not weights_path.is_file():
         raise SystemExit(
             f"Checkpoint not found: {weights_path}\n"
-            "Copy Controlled v1 best.pt into models/controlled_v1_best.pt "
+            "Place yolo11s_lr_0p001_best.pt in backend/models/ "
             "or pass --weights with the correct path."
         )
     if not 0 <= args.conf <= 1:
@@ -74,7 +74,7 @@ def main():
         import torch
         device = "0" if torch.cuda.is_available() else "cpu"
 
-    print("AS4 Controlled v1 YOLO inference")
+    print("YOLO11s localization inference")
     print(f"Device: {device}; images: {len(files)}")
     print(f"Image size: {args.imgsz}; confidence: {args.conf}; NMS IoU: {args.iou}")
     print("Research prototype only — not for medical diagnosis or treatment.")
@@ -96,39 +96,42 @@ def main():
                 verbose=False,
             )[0]
 
-            # Save an annotated copy without modifying the source image.
-            annotated = result.plot()
-            output_image = save_dir / f"{index:05d}_{image_path.stem}.jpg"
+            annotated = result.orig_img.copy()
+            boxes = result.boxes
+            n = 0 if boxes is None else len(boxes)
+            confidences = [] if boxes is None else boxes.conf.detach().cpu().tolist()
+            xyxy = [] if boxes is None else boxes.xyxy.detach().cpu().tolist()
+
             import cv2
+            for coords in xyxy:
+                x1, y1, x2, y2 = (int(value) for value in coords)
+                cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+            output_image = save_dir / f"{index:05d}_{image_path.stem}.jpg"
             if not cv2.imwrite(str(output_image), annotated):
                 raise RuntimeError(f"Could not write annotated image: {output_image}")
 
-            boxes = result.boxes
-            n = 0 if boxes is None else len(boxes)
-            print(f"[{index}/{len(files)}] {image_path.name}: {n} detection(s)")
+            max_confidence = max(confidences, default=None)
+            confidence_text = "null" if max_confidence is None else f"{max_confidence:.6f}"
+            print(
+                f"[{index}/{len(files)}] {image_path.name}: "
+                f"{n} detection(s), max confidence={confidence_text}"
+            )
 
             if n == 0:
                 rows.append({
                     "image": str(image_path),
-                    "class_id": "",
-                    "class_name": "",
                     "confidence": "",
+                    "max_confidence": max_confidence,
                     "x1": "", "y1": "", "x2": "", "y2": "",
                     "annotated_image": str(output_image),
                 })
             else:
-                xyxy = boxes.xyxy.detach().cpu().tolist()
-                confs = boxes.conf.detach().cpu().tolist()
-                classes = boxes.cls.detach().cpu().tolist()
-                for coords, score, class_id in zip(xyxy, confs, classes):
-                    class_id = int(class_id)
-                    names = result.names
-                    class_name = names.get(class_id, str(class_id)) if isinstance(names, dict) else names[class_id]
+                for coords, score in zip(xyxy, confidences):
                     rows.append({
                         "image": str(image_path),
-                        "class_id": class_id,
-                        "class_name": class_name,
                         "confidence": float(score),
+                        "max_confidence": max_confidence,
                         "x1": float(coords[0]), "y1": float(coords[1]),
                         "x2": float(coords[2]), "y2": float(coords[3]),
                         "annotated_image": str(output_image),
@@ -140,8 +143,8 @@ def main():
         csv_path = Path(args.output).expanduser().resolve()
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         fields = [
-            "image", "class_id", "class_name", "confidence",
-            "x1", "y1", "x2", "y2", "annotated_image"
+            "image", "confidence", "max_confidence", "x1", "y1",
+            "x2", "y2", "annotated_image"
         ]
         with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
             writer = csv.DictWriter(f, fieldnames=fields)
