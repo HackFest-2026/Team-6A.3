@@ -88,7 +88,10 @@ function App() {
       setHistory((items) => [historyItem, ...items.filter((item) => item.id !== data.id)].slice(0, 20))
     } catch (caught) {
       const message = axios.isAxiosError(caught)
-        ? caught.response?.data?.detail ?? 'Unable to reach the analysis service. Check that the API and model checkpoints are available.'
+        ? caught.response?.data?.detail
+          ?? (caught.code === 'ECONNABORTED'
+            ? 'Analysis timed out. Check the API console and try again.'
+            : 'Cannot connect to the analysis API. Start the app with start.ps1 and check the API console.')
         : 'The image could not be analyzed. Try again.'
       setError(typeof message === 'string' ? message : 'The image could not be analyzed.')
     } finally {
@@ -244,7 +247,7 @@ function App() {
               <div className="history-footer">IN-MEMORY ONLY <span className="history-live-dot" /></div>
             </section>
 
-            <div className="pipeline-note"><div className="pipeline-line"><span className="pipeline-node active" /><span className="pipeline-node" /></div><div><strong>Two-stage workflow</strong><p>ResNet50 + DenseNet121 classify. YOLO localizes.</p></div></div>
+            <div className="pipeline-note"><div className="pipeline-line"><span className="pipeline-node active" /><span className="pipeline-node" /></div><div><strong>Two-stage workflow</strong><p>DenseNet121 classifies. YOLO localizes.</p></div></div>
           </aside>
         </div>
 

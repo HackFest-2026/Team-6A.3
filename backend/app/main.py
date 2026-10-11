@@ -18,7 +18,7 @@ from starlette.responses import JSONResponse
 from app.bounding import SuspiciousRegionDetector
 from app.config import settings
 from app.images import decode_upload, read_upload
-from app.predict import ClassifierEnsemble
+from app.predict import DenseNet121Classifier
 from app.schemas import HistoryItem, PredictionResponse
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -41,7 +41,7 @@ async def lifespan(application: FastAPI):
     device_name = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info("Starting pneumonia inference service on %s", device_name)
     try:
-        application.state.classifier = ClassifierEnsemble(settings.model_dir, torch.device(device_name))
+        application.state.classifier = DenseNet121Classifier(settings.model_dir, torch.device(device_name))
         application.state.detector = SuspiciousRegionDetector(settings.model_dir, device_name)
     except Exception:
         logger.exception("Model loading failed; check the configured checkpoints in %s", settings.model_dir)

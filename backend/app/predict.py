@@ -1,6 +1,5 @@
 import json
 import logging
-import math
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +17,7 @@ CLASS_LABELS = {
 }
 
 
-def _read_manifest(model_dir: Path) -> tuple[tuple[str, ...], dict[str, Path], dict[str, float]]:
+def _read_manifest(model_dir: Path) -> tuple[tuple[str, ...], Path]:
     manifest_path = model_dir / MANIFEST_NAME
     if not manifest_path.is_file():
         raise FileNotFoundError(f"Required classifier manifest not found: {manifest_path}")
@@ -28,27 +27,12 @@ def _read_manifest(model_dir: Path) -> tuple[tuple[str, ...], dict[str, Path], d
         raise ValueError(f"{manifest_path} must define the supported classes in the expected order.")
 
     model_files = manifest.get("model_files")
-    probability_weights = manifest.get("probability_weights")
-    if not isinstance(model_files, dict) or not isinstance(probability_weights, dict):
-        raise ValueError(f"{manifest_path} must define model_files and probability_weights.")
-    if set(model_files) != {"resnet", "densenet"} or set(probability_weights) != {"resnet50", "densenet121"}:
-        raise ValueError(f"{manifest_path} must define ResNet50 and DenseNet121 checkpoints and weights.")
-
-    checkpoints = {
-        key: (model_dir.parent / Path(value)).resolve()
-        for key, value in model_files.items()
-        if isinstance(value, str)
-    }
-    weights = {
-        key: float(value)
-        for key, value in probability_weights.items()
-        if isinstance(value, (int, float)) and not isinstance(value, bool)
-    }
-    if len(checkpoints) != len(model_files) or len(weights) != len(probability_weights):
-        raise ValueError(f"{manifest_path} contains invalid checkpoint paths or probability weights.")
-    if any(weight < 0 for weight in weights.values()) or not math.isclose(sum(weights.values()), 1.0):
-        raise ValueError(f"{manifest_path} probability weights must be non-negative and sum to 1.")
-    return tuple(class_names), checkpoints, weights
+    if not isinstance(model_files, dict) or set(model_files) != {"densenet"}:
+        raise ValueError(f"{manifest_path} must define only the DenseNet121 checkpoint.")
+    checkpoint_file = model_files["densenet"]
+    if not isinstance(checkpoint_file, str):
+        raise ValueError(f"{manifest_path} contains an invalid DenseNet121 checkpoint path.")
+    return tuple(class_names), (model_dir.parent / Path(checkpoint_file)).resolve()
 
 
 def _state_dict(payload: object) -> dict[str, torch.Tensor]:
@@ -63,28 +47,20 @@ def _state_dict(payload: object) -> dict[str, torch.Tensor]:
     return {key.removeprefix("module."): value for key, value in payload.items() if isinstance(value, torch.Tensor)}
 
 
-class ClassifierEnsemble:
+class DenseNet121Classifier:
     def __init__(self, model_dir: Path, device: torch.device) -> None:
         self.device = device
-        self.models: list[tuple[nn.Module, float]] = []
-        class_names, checkpoints, weights = _read_manifest(model_dir)
+        class_names, checkpoint_path = _read_manifest(model_dir)
         self.class_labels = tuple(CLASS_LABELS[name] for name in class_names)
-        constructors = (
-            ("resnet", "resnet50", models.resnet50, "fc"),
-            ("densenet", "densenet121", models.densenet121, "classifier"),
-        )
-        for model_key, weight_key, constructor, output_layer in constructors:
-            checkpoint_path = checkpoints[model_key]
-            if not checkpoint_path.is_file():
-                raise FileNotFoundError(f"Required classification checkpoint not found: {checkpoint_path}")
-            network = constructor(weights=None)
-            layer = getattr(network, output_layer)
-            setattr(network, output_layer, nn.Linear(layer.in_features, len(class_names)))
-            payload = torch.load(checkpoint_path, map_location=device, weights_only=True)
-            network.load_state_dict(_state_dict(payload), strict=True)
-            network.to(device).eval()
-            self.models.append((network, weights[weight_key]))
-            logger.info("Loaded classification checkpoint %s", checkpoint_path)
+        if not checkpoint_path.is_file():
+            raise FileNotFoundError(f"Required DenseNet121 classification checkpoint not found: {checkpoint_path}")
+        self.model = models.densenet121(weights=None)
+        layer = self.model.classifier
+        self.model.classifier = nn.Linear(layer.in_features, len(class_names))
+        payload = torch.load(checkpoint_path, map_location=device, weights_only=True)
+        self.model.load_state_dict(_state_dict(payload), strict=True)
+        self.model.to(device).eval()
+        logger.info("Loaded DenseNet121 classification checkpoint %s", checkpoint_path)
 
     @torch.no_grad()
     def predict(self, image: Image.Image) -> dict[str, float]:
@@ -94,10 +70,7 @@ class ClassifierEnsemble:
         mean = torch.tensor((0.485, 0.456, 0.406), device=self.device).view(1, 3, 1, 1)
         std = torch.tensor((0.229, 0.224, 0.225), device=self.device).view(1, 3, 1, 1)
         tensor = (tensor - mean) / std
-        probabilities = sum(
-            network(tensor).softmax(dim=1)[0] * weight
-            for network, weight in self.models
-        )
+        probabilities = self.model(tensor).softmax(dim=1)[0]
         return {
             label: float(score)
             for label, score in zip(self.class_labels, probabilities.cpu().tolist(), strict=True)

@@ -1,6 +1,6 @@
 # Radiant Pneumonia Detection
 
-A full-stack chest X-ray analysis workspace. ResNet50 and DenseNet121 provide the three-class disease classification ensemble; YOLO11s only localizes suspicious regions and reports its highest detection confidence. The classifier remains the sole authority for the predicted class.
+A full-stack chest X-ray analysis workspace. DenseNet121 provides the three-class disease classification; YOLO11s only localizes suspicious regions and reports its highest detection confidence. DenseNet121 remains the sole authority for the predicted class.
 
 > This software is an AI-assisted screening tool, not a standalone diagnosis. All outputs require review by a qualified clinician.
 
@@ -8,36 +8,26 @@ A full-stack chest X-ray analysis workspace. ResNet50 and DenseNet121 provide th
 
 - Node.js 20 or newer and npm
 - Python 3.10 or newer
-- Classifier manifest and checkpoints: `AS4_FINAL_ensemble.json`, `AS4_FINAL_ensemble_resnet50.pth`, and `AS4_FINAL_ensemble_densenet121.pth`
+- Classifier manifest and checkpoint: `AS4_FINAL_ensemble.json` and `AS4_FINAL_ensemble_densenet121.pth`
 - YOLO localization checkpoint: `controlled_v1_best.pt` or `yolo.pth`
 
 ## Model checkpoints
 
-Put the classifier manifest and checkpoints, plus `controlled_v1_best.pt` or `yolo.pth`, in `backend/models/`. The API reads classifier filenames, class order, and ensemble weights from `AS4_FINAL_ensemble.json`; its source classes are mapped to `Healthy`, `Not Healthy`, and `Pneumonia` in that order. See `backend/models/README.md` for checkpoint formats. The API loads the classifiers and localizer at startup and exits with an explicit error if required files are missing or incompatible. It does not produce placeholder predictions.
+Put the classifier manifest and DenseNet121 checkpoint, plus `controlled_v1_best.pt` or `yolo.pth`, in `backend/models/`. The API reads the classifier filename and class order from `AS4_FINAL_ensemble.json`; its source classes are mapped to `Healthy`, `Not Healthy`, and `Pneumonia` in that order. See `backend/models/README.md` for checkpoint formats. The API loads DenseNet121 and the localizer at startup and exits with an explicit error if required files are missing or incompatible. It does not produce placeholder predictions.
 
-The disease classes are ordered `Healthy`, `Not Healthy`, `Pneumonia`. The classifier checkpoints must have a three-logit output head. The YOLO checkpoint must be compatible with Ultralytics YOLO.
+The disease classes are ordered `Healthy`, `Not Healthy`, `Pneumonia`. The DenseNet121 checkpoint must have a three-logit output head. The YOLO checkpoint must be compatible with Ultralytics YOLO.
 
 ## Run locally
 
-Install frontend dependencies:
+From the project root, run:
 
 ```powershell
-cd frontend
-npm install
-npm run dev
+ .\start.ps1
 ```
 
-In a second terminal, install backend dependencies and start the API:
+On first launch, the script creates `.venv` if needed, installs missing backend and frontend dependencies, starts the API, waits for its model readiness check, and then starts Vite. Keep the API console open while using the app; press Ctrl+C in the Vite terminal to stop the local services. Python 3.10 or newer and Node.js 20 or newer must be installed. If PowerShell blocks local scripts, run `Set-ExecutionPolicy -Scope Process Bypass` in that terminal, then run the script again.
 
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-Open the Vite URL printed by npm, normally `http://localhost:5173`. The frontend expects the API at `http://localhost:8000`; set `VITE_API_URL` before starting Vite to override it. FastAPI docs are available at `http://localhost:8000/docs` after model loading succeeds.
+Open the Vite URL printed by npm. In local development, API requests are proxied through Vite to `http://127.0.0.1:8000`, avoiding browser host and CORS mismatches. FastAPI docs are available at `http://localhost:8000/docs` after model loading succeeds. Set `VITE_API_URL` to use a different API origin.
 
 For PyTorch GPU acceleration, install the PyTorch build matching the machine's CUDA setup before installing the remaining requirements. CPU inference is selected automatically when CUDA is unavailable.
 
