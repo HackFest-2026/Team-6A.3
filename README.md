@@ -1,4 +1,4 @@
-# Radiant Pneumonia Detection
+# AS4 Pneumonia Detection
 
 A full-stack chest X-ray analysis workspace. DenseNet121 provides the three-class disease classification; YOLO11s only localizes suspicious regions and reports its highest detection confidence. DenseNet121 remains the sole authority for the predicted class.
 
